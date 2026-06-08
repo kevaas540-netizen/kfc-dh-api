@@ -25,11 +25,45 @@ const app  = express()
 const PORT = process.env.PORT || 3000
 
 // ── Seguridad ────────────────────────────────────────────────
-app.use(helmet())
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL || '*'],
+    },
+  },
+}))
+
+const allowedOrigins = [
+  'https://kfc-dh-app.vercel.app',
+  'https://kfc-dh-app-1.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+]
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error('Not allowed by CORS'))
+    }
+  },
   credentials: true,
 }))
+
+// ── HTTPS redirect en producción ─────────────────────────────
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(301, 'https://' + req.headers.host + req.url)
+    }
+    next()
+  })
+}
 
 // ── Rate limiting ────────────────────────────────────────────
 const limiter = rateLimit({
