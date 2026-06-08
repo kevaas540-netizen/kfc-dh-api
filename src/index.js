@@ -42,13 +42,19 @@ const allowedOrigins = [
   'https://kfc-dh-app-1.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000',
+  'capacitor://localhost',
+  'https://localhost',
+  'http://localhost',
 ]
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Permitir apps nativas (Capacitor, APK) que no envían origin
+    // o envían origin null / capacitor://localhost
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
+      console.warn('[CORS] Bloqueado:', origin)
       callback(new Error('Not allowed by CORS'))
     }
   },
