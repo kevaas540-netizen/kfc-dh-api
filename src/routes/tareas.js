@@ -36,7 +36,7 @@ router.get('/', requireAuth, async (req, res) => {
 // Crear o actualizar (upsert) con onConflict en restaurante_id,tipo,fecha_semana
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const { restaurante_id, tipo, fecha_semana, descripcion, completada } = req.body
+    const { restaurante_id, tipo, fecha_semana, completada } = req.body
 
     if (!restaurante_id || !tipo || !fecha_semana) {
       return res.status(400).json({ error: 'restaurante_id, tipo y fecha_semana son requeridos' })
@@ -48,7 +48,6 @@ router.post('/', requireAuth, async (req, res) => {
         restaurante_id,
         tipo,
         fecha_semana,
-        descripcion: descripcion || null,
         completada: completada || false,
       }, { onConflict: 'restaurante_id,tipo,fecha_semana' })
       .select()
