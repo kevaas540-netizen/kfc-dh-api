@@ -1,32 +1,29 @@
-// src/routes/upload.js
-// ============================================================
-// Subida de archivos a Supabase Storage
-// ============================================================
-
-const express  = require('express')
+const express = require('express')
 const multer = require('multer')
 const supabase = require('../config/supabase')
 const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }) // 5MB max
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
 
-// POST /api/upload — subir archivo genérico
-// Body: multipart/form-data con campo 'file'
-// Query: ?folder=juntas|tareas (opcional, para organizar en buckets)
 router.post('/', requireAuth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se envió ningún archivo' })
     }
 
+    // Definimos el bucket según la carpeta que viene en la query
+    // Si la folder es 'juntas', usamos el bucket 'juntas'. Si es 'tareas', usamos 'tareas-evidencia'
     const folder = req.query.folder || 'general'
+    const bucketName = folder === 'juntas' ? 'juntas' : 'tareas-evidencia'
+    
     const ext = req.file.originalname.split('.').pop()
     const timestamp = Date.now()
     const path = `${folder}/${req.user.sub}_${timestamp}.${ext}`
 
+    // 1. Subir a Supabase
     const { data, error } = await supabase.storage
-      .from('kfc-dh-fotos')
+      .from(bucketName)
       .upload(path, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false,
@@ -34,12 +31,12 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
 
     if (error) {
       console.error('Storage error:', error)
-      return res.status(500).json({ error: 'Error al subir archivo: ' + error.message })
+      return res.status(500).json({ error: 'Error al subir a ' + bucketName + ': ' + error.message })
     }
 
-    // Obtener URL pública
+    // 2. Obtener URL pública
     const { data: urlData } = supabase.storage
-      .from('kfc-dh-fotos')
+      .from(bucketName)
       .getPublicUrl(path)
 
     res.json({

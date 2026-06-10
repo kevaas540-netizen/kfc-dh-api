@@ -4,25 +4,30 @@
 // ============================================================
 
 require('dotenv').config()
-const express    = require('express')
-const cors       = require('cors')
-const helmet     = require('helmet')
-const morgan     = require('morgan')
-const rateLimit  = require('express-rate-limit')
-const cron       = require('node-cron')
+const express     = require('express')
+const cors        = require('cors')
+const helmet      = require('helmet')
+const morgan      = require('morgan')
+const rateLimit   = require('express-rate-limit')
+const cron        = require('node-cron')
 
-const authRoutes        = require('./routes/auth')
-const restaurantesRoutes = require('./routes/restaurantes')
-const juntasRoutes      = require('./routes/juntas')
-const propinasRoutes    = require('./routes/propinas')
-const tareasRoutes      = require('./routes/tareas')
-const notifRoutes       = require('./routes/notificaciones')
-const adminRoutes       = require('./routes/admin')
-const uploadRoutes      = require('./routes/upload')
+// Importación de rutas
+const authRoutes          = require('./routes/auth')
+const restaurantesRoutes  = require('./routes/restaurantes')
+const juntasRoutes        = require('./routes/juntas')
+const propinasRoutes      = require('./routes/propinas')
+const tareasRoutes        = require('./routes/tareas')
+const notifRoutes         = require('./routes/notificaciones')
+const adminRoutes         = require('./routes/admin')
+const uploadRoutes        = require('./routes/upload')
+const dhRoutes            = require('./routes/dh') // <--- NUEVA RUTA INTEGRADA
+
 const { enviarRecordatorios } = require('./services/recordatorios')
 
 const app  = express()
 const PORT = process.env.PORT || 3000
+
+app.set('trust proxy', 1)
 
 // ── Seguridad ────────────────────────────────────────────────
 app.use(helmet({
@@ -49,8 +54,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir apps nativas (Capacitor, APK) que no envían origin
-    // o envían origin null / capacitor://localhost
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
@@ -73,8 +76,10 @@ if (process.env.NODE_ENV === 'production') {
 
 // ── Rate limiting ────────────────────────────────────────────
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100,
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_MAX) || 2000,
+  standardHeaders: true,
+  legacyHeaders: false,
   message: { error: 'Demasiadas solicitudes, intenta más tarde' },
 })
 app.use('/api/', limiter)
@@ -89,14 +94,15 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // ── Rutas ────────────────────────────────────────────────────
-app.use('/api/auth',         authRoutes)
-app.use('/api/restaurantes', restaurantesRoutes)
-app.use('/api/juntas',       juntasRoutes)
-app.use('/api/propinas',     propinasRoutes)
-app.use('/api/tareas',       tareasRoutes)
+app.use('/api/auth',          authRoutes)
+app.use('/api/restaurantes',  restaurantesRoutes)
+app.use('/api/juntas',        juntasRoutes)
+app.use('/api/propinas',      propinasRoutes)
+app.use('/api/tareas',        tareasRoutes)
 app.use('/api/notificaciones', notifRoutes)
-app.use('/api/admin',        adminRoutes)
-app.use('/api/upload',       uploadRoutes)
+app.use('/api/admin',         adminRoutes)
+app.use('/api/upload',        uploadRoutes)
+app.use('/api/dh',            dhRoutes) // <--- RUTA DH REGISTRADA
 
 // ── Health check ─────────────────────────────────────────────
 app.get('/health', (req, res) => {
