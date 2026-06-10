@@ -66,7 +66,7 @@ router.patch('/:id/completar', requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('tareas_semanales')
-      .update({ completada: true, completada_at: new Date().toISOString() })
+      .update({ completada: true })
       .eq('id', req.params.id)
       .select()
       .single()

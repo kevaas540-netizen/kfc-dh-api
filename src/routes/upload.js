@@ -15,7 +15,6 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
     // Definimos el bucket según la carpeta que viene en la query
     // Si la folder es 'juntas', usamos el bucket 'juntas'. Si es 'tareas', usamos 'tareas-evidencia'
     const folder = req.query.folder || 'general'
-    const bucketName = folder === 'juntas' ? 'juntas' : 'tareas-evidencia'
     
     const ext = req.file.originalname.split('.').pop()
     const timestamp = Date.now()
@@ -23,7 +22,7 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
 
     // 1. Subir a Supabase
     const { data, error } = await supabase.storage
-      .from(bucketName)
+      .from('kfc-dh-fotos')
       .upload(path, req.file.buffer, {
         contentType: req.file.mimetype,
         upsert: false,
@@ -31,12 +30,12 @@ router.post('/', requireAuth, upload.single('file'), async (req, res) => {
 
     if (error) {
       console.error('Storage error:', error)
-      return res.status(500).json({ error: 'Error al subir a ' + bucketName + ': ' + error.message })
+      return res.status(500).json({ error: 'Error al subir archivo: ' + error.message })
     }
 
     // 2. Obtener URL pública
     const { data: urlData } = supabase.storage
-      .from(bucketName)
+      .from('kfc-dh-fotos')
       .getPublicUrl(path)
 
     res.json({
