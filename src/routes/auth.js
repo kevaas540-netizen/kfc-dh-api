@@ -2,6 +2,7 @@
 const express  = require('express')
 const jwt      = require('jsonwebtoken')
 const supabase = require('../config/supabase')
+const { authClient } = require('../config/supabase')
 const { requireAuth } = require('../middleware/auth')
 
 const router = express.Router()
@@ -16,7 +17,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Autenticar con Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await authClient.auth.signInWithPassword({
       email, password,
     })
 

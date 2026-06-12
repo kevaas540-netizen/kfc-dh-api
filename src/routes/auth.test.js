@@ -9,6 +9,11 @@ const jwt = require('jsonwebtoken')
 
 // Mock de Supabase
 jest.mock('../config/supabase', () => ({
+  authClient: {
+    auth: {
+      signInWithPassword: jest.fn(),
+    },
+  },
   auth: {
     signInWithPassword: jest.fn(),
   },
@@ -20,6 +25,7 @@ jest.mock('../config/supabase', () => ({
 }))
 
 const supabase = require('../config/supabase')
+const { authClient } = require('../config/supabase')
 const authRouter = require('./auth')
 
 const app = express()
@@ -43,7 +49,7 @@ describe('POST /api/auth/login', () => {
   })
 
   it('debe rechazar credenciales incorrectas', async () => {
-    supabase.auth.signInWithPassword.mockResolvedValue({
+    authClient.auth.signInWithPassword.mockResolvedValue({
       data: { user: null },
       error: { message: 'Invalid login credentials' },
     })
@@ -57,7 +63,7 @@ describe('POST /api/auth/login', () => {
   })
 
   it('debe rechazar usuario sin rol asignado', async () => {
-    supabase.auth.signInWithPassword.mockResolvedValue({
+    authClient.auth.signInWithPassword.mockResolvedValue({
       data: { user: { id: 'uuid-123', email: 'test@test.com' } },
       error: null,
     })
