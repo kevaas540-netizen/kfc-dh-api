@@ -9,6 +9,21 @@ const { requireAuth, requireAdmin } = require('../middleware/auth')
 
 const router = express.Router()
 
+async function createAuthUser(email, password) {
+  const tempPassword = password || process.env.DEFAULT_TEMP_PASSWORD || 'Kfc123456!'
+  const { data, error } = await supabase.auth.admin.createUser({
+    email,
+    password: tempPassword,
+    email_confirm: true,
+  })
+
+  if (error) {
+    error.statusCode = 400
+    throw error
+  }
+  return data.user.id
+}
+
 // ── GET /api/admin/resumen ───────────────────────────────────
 // Totales de áreas activas, DH activos, restaurantes activos
 router.get('/resumen', requireAuth, requireAdmin, async (req, res) => {
@@ -35,15 +50,15 @@ router.get('/resumen', requireAuth, requireAdmin, async (req, res) => {
       },
     })
   } catch (err) {
-    res.status(500).json({ error: 'Error interno' })
+    res.status(err.statusCode || 500).json({ error: err.statusCode ? err.message : 'Error interno' })
   }
 })
 
 // ── GET /api/admin/areas ─────────────────────────────────────
-router.get('/areas', requireAuth, requireAdmin, async (req, res) => {
+router.get('/metros', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { data, error } = await supabase
-      .from('areas')
+      .from('metros')
       .select('*')
       .order('nombre')
 
@@ -54,22 +69,88 @@ router.get('/areas', requireAuth, requireAdmin, async (req, res) => {
   }
 })
 
-// ── POST /api/admin/areas ────────────────────────────────────
-router.post('/areas', requireAuth, requireAdmin, async (req, res) => {
+router.post('/metros', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { nombre, descripcion } = req.body
-    if (!nombre) {
-      return res.status(400).json({ error: 'nombre es requerido' })
-    }
+    if (!nombre) return res.status(400).json({ error: 'nombre es requerido' })
 
     const { data, error } = await supabase
-      .from('areas')
+      .from('metros')
       .insert({ nombre, descripcion: descripcion || null })
       .select()
       .single()
 
     if (error) return res.status(400).json({ error: error.message })
     res.status(201).json({ data })
+  } catch (err) {
+    res.status(500).json({ error: 'Error interno' })
+  }
+})
+
+router.put('/metros/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { nombre, descripcion, activo } = req.body
+    const { data, error } = await supabase
+      .from('metros')
+      .update({ nombre, descripcion, activo })
+      .eq('id', req.params.id)
+      .select()
+      .single()
+
+    if (error) return res.status(400).json({ error: error.message })
+    res.json({ data })
+  } catch (err) {
+    res.status(500).json({ error: 'Error interno' })
+  }
+})
+
+router.get('/areas', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('areas')
+      .select('*')
+      .order('nombre')
+
+    if (error) return res.status(400).json({ error: error.message })
+    res.json({ data })
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.statusCode ? err.message : 'Error interno' })
+  }
+})
+
+// ── POST /api/admin/areas ────────────────────────────────────
+router.post('/areas', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { nombre, descripcion, metro_id } = req.body
+    if (!nombre) {
+      return res.status(400).json({ error: 'nombre es requerido' })
+    }
+
+    const { data, error } = await supabase
+      .from('areas')
+      .insert({ nombre, descripcion: descripcion || null, metro_id: metro_id || null })
+      .select()
+      .single()
+
+    if (error) return res.status(400).json({ error: error.message })
+    res.status(201).json({ data })
+  } catch (err) {
+    res.status(err.statusCode || 500).json({ error: err.statusCode ? err.message : 'Error interno' })
+  }
+})
+
+router.put('/areas/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { nombre, descripcion, metro_id, activo } = req.body
+    const { data, error } = await supabase
+      .from('areas')
+      .update({ nombre, descripcion, metro_id: metro_id || null, activo })
+      .eq('id', req.params.id)
+      .select()
+      .single()
+
+    if (error) return res.status(400).json({ error: error.message })
+    res.json({ data })
   } catch (err) {
     res.status(500).json({ error: 'Error interno' })
   }
@@ -93,21 +174,23 @@ router.get('/dh', requireAuth, requireAdmin, async (req, res) => {
 // ── POST /api/admin/dh ─────────────────────────────────────────
 router.post('/dh', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { auth_user_id, nombre, correo, telefono } = req.body
-    if (!auth_user_id || !nombre || !correo) {
-      return res.status(400).json({ error: 'auth_user_id, nombre y correo son requeridos' })
+    const { auth_user_id, nombre, correo, password } = req.body
+    if (!nombre || !correo) {
+      return res.status(400).json({ error: 'nombre y correo son requeridos' })
     }
+
+    const authUserId = auth_user_id || await createAuthUser(correo, password)
 
     const { data, error } = await supabase
       .from('usuarios_dh')
-      .insert({ auth_user_id, nombre, correo, telefono: telefono || null })
+      .insert({ auth_user_id: authUserId, nombre, correo, telefono: null })
       .select()
       .single()
 
     if (error) return res.status(400).json({ error: error.message })
     res.status(201).json({ data })
   } catch (err) {
-    res.status(500).json({ error: 'Error interno' })
+    res.status(err.statusCode || 500).json({ error: err.statusCode ? err.message : 'Error interno' })
   }
 })
 

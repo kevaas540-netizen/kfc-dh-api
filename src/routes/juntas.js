@@ -25,7 +25,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/juntas — crear/actualizar junta
+// POST /api/juntas — crear junta
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { restaurante_id, fecha, hora, lugar } = req.body
@@ -39,8 +39,7 @@ router.post('/', requireAuth, async (req, res) => {
 
     const { data, error } = await supabase
       .from('juntas_periodo')
-      .upsert({ restaurante_id, fecha, hora, lugar, mes, anio, estado: 'pendiente' },
-               { onConflict: 'restaurante_id,mes,anio' })
+      .insert({ restaurante_id, fecha, hora, lugar, mes, anio, estado: 'pendiente' })
       .select().single()
 
     if (error) return res.status(400).json({ error: error.message })
