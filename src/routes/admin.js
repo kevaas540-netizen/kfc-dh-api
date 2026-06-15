@@ -183,7 +183,7 @@ router.post('/dh', requireAuth, requireAdmin, async (req, res) => {
 
     const { data, error } = await supabase
       .from('usuarios_dh')
-      .insert({ auth_user_id: authUserId, nombre, correo, telefono: null })
+      .insert({ auth_user_id: authUserId, nombre, correo })
       .select()
       .single()
 

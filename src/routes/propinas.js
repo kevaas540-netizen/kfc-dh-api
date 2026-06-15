@@ -29,7 +29,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 })
 
-// GET /api/propinas/estadisticas — para gráficas DH
+// GET /api/propinas/estadisticas - para graficas DH
 router.get('/estadisticas', requireAuth, requireDH, async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -46,7 +46,7 @@ router.get('/estadisticas', requireAuth, requireDH, async (req, res) => {
   }
 })
 
-// POST /api/propinas — crear o actualizar borrador
+// POST /api/propinas - crear o actualizar borrador
 router.post('/', requireAuth, async (req, res) => {
   try {
     const {
@@ -59,23 +59,11 @@ router.post('/', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'restaurante_id, mes y anio son requeridos' })
     }
 
-    // Verificar que no esté ya guardada
-    const { data: existente } = await supabase
-      .from('propinas')
-      .select('id, guardado')
-      .eq('restaurante_id', restaurante_id)
-      .eq('mes', mes)
-      .eq('anio', anio)
-      .maybeSingle()
-
-    if (existente?.guardado) {
-      return res.status(400).json({ error: 'Las propinas de este mes ya fueron enviadas y no se pueden editar' })
-    }
-
     const { data, error } = await supabase
       .from('propinas')
       .upsert({
         restaurante_id, mes, anio,
+        guardado: false,
         num_colaboradores: Number(num_colaboradores) || 1,
         centavos_50: Number(centavos_50) || 0,
         pesos_1:     Number(pesos_1)     || 0,
@@ -97,18 +85,17 @@ router.post('/', requireAuth, async (req, res) => {
   }
 })
 
-// PATCH /api/propinas/:id/guardar — marcar como enviadas
+// PATCH /api/propinas/:id/guardar - marcar como enviadas
 router.patch('/:id/guardar', requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('propinas')
       .update({ guardado: true, guardado_at: new Date().toISOString() })
       .eq('id', req.params.id)
-      .eq('guardado', false)
       .select().single()
 
     if (error) return res.status(400).json({ error: error.message })
-    if (!data)  return res.status(404).json({ error: 'Propinas no encontradas o ya guardadas' })
+    if (!data)  return res.status(404).json({ error: 'Propinas no encontradas' })
     res.json({ data })
   } catch (err) {
     res.status(500).json({ error: 'Error interno' })
@@ -116,3 +103,4 @@ router.patch('/:id/guardar', requireAuth, async (req, res) => {
 })
 
 module.exports = router
+

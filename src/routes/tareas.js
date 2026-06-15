@@ -10,19 +10,21 @@ const { requireAuth } = require('../middleware/auth')
 const router = express.Router()
 
 // ── GET /api/tareas ──────────────────────────────────────────
-// Filtros: restaurante_id, tipo, fecha_semana
+// Filtros: restaurante_id, tipo, fecha_semana, fecha_inicio, fecha_fin
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const { restaurante_id, tipo, fecha_semana } = req.query
+    const { restaurante_id, tipo, fecha_semana, fecha_inicio, fecha_fin } = req.query
 
     let query = supabase
       .from('tareas_semanales')
-      .select('*, restaurantes(nombre)')
+      .select('*, restaurantes(nombre, zona, area_id, areas(nombre))')
       .order('fecha_semana', { ascending: false })
 
     if (restaurante_id)  query = query.eq('restaurante_id', restaurante_id)
     if (tipo)            query = query.eq('tipo', tipo)
     if (fecha_semana)    query = query.eq('fecha_semana', fecha_semana)
+    if (fecha_inicio)    query = query.gte('fecha_semana', fecha_inicio)
+    if (fecha_fin)       query = query.lte('fecha_semana', fecha_fin)
 
     const { data, error } = await query
     if (error) return res.status(400).json({ error: error.message })
